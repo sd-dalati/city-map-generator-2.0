@@ -213,7 +213,7 @@ def get_coordinates(city, country):
     else:
         raise ValueError(f"Could not find coordinates for {city}, {country}")
 
-def create_poster(city, country, point, dist, output_file):
+def create_poster(city, country, point, dist, output_file, orientation='portrait'):
     print(f"\nGenerating map for {city}, {country}...")
     
     # Progress bar for data fetching
@@ -245,7 +245,11 @@ def create_poster(city, country, point, dist, output_file):
     
     # 2. Setup Plot
     print("Rendering map...")
-    fig, ax = plt.subplots(figsize=(12, 16), facecolor=THEME['bg'])
+    # Set figure size based on orientation
+    if orientation == 'landscape':
+        fig, ax = plt.subplots(figsize=(20, 12), facecolor=THEME['bg'])  # Landscape: wider than tall
+    else:
+        fig, ax = plt.subplots(figsize=(12, 16), facecolor=THEME['bg'])  # Portrait: taller than wide
     ax.set_facecolor(THEME['bg'])
     ax.set_position([0, 0, 1, 1])
     
@@ -422,6 +426,7 @@ Examples:
     parser.add_argument('--distance', '-d', type=int, default=29000, help='Map radius in meters (default: 29000)')
     parser.add_argument('--lat', type=float, help='Custom latitude coordinate')
     parser.add_argument('--lng', type=float, help='Custom longitude coordinate')
+    parser.add_argument('--orientation', '-o', type=str, choices=['portrait', 'landscape'], default='portrait', help='Poster orientation: portrait or landscape (default: portrait)')
     parser.add_argument('--list-themes', action='store_true', help='List all available themes')
     
     args = parser.parse_args()
@@ -468,7 +473,8 @@ Examples:
             coords = get_coordinates(args.city, args.country)
         
         output_file = generate_output_filename(args.city, args.theme)
-        create_poster(args.city, args.country, coords, args.distance, output_file)
+        create_poster(args.city, args.country, coords, args.distance, output_file, args.orientation)
+
         
         print("\n" + "=" * 50)
         print("✓ Poster generation complete!")
