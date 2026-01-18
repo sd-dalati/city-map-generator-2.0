@@ -481,6 +481,7 @@ Examples:
 
         
         print("\n" + "=" * 50)
+                create_poster(city_name, country_name, coords, args.distance, output_file, args.orientation)
         print("✓ Poster generation complete!")
         print("=" * 50)
         
