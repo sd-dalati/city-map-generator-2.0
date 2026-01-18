@@ -478,10 +478,9 @@ Examples:
         
         output_file = generate_output_filename(city_name, args.theme)
         
-
         
         print("\n" + "=" * 50)
-                create_poster(city_name, country_name, coords, args.distance, output_file, args.orientation)
+                te_poster(city_name, country_name, coords, args.distance, output_file, args.orientation)
         print("✓ Poster generation complete!")
         print("=" * 50)
         
