@@ -442,7 +442,7 @@ Examples:
         os.sys.exit(0)
     
     # Validate required arguments
-    if not args.city or not args.country:
+        # Check if either coordinates OR city/country are provided
         print("Error: --city and --country are required.\n")
         print_examples()
         os.sys.exit(1)
@@ -472,8 +472,12 @@ Examples:
                 os.sys.exit(1)
             coords = get_coordinates(args.city, args.country)
         
-        output_file = generate_output_filename(args.city, args.theme)
-        create_poster(args.city, args.country, coords, args.distance, output_file, args.orientation)
+                # Use city name if available, otherwise use coordinates for filename
+        city_name = args.city if args.city else f"{args.lat}_{args.lng}"
+        country_name = args.country if args.country else "custom"
+        
+        output_file = generate_output_filename(city_name, args.theme)
+        
 
         
         print("\n" + "=" * 50)
