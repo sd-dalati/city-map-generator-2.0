@@ -210,8 +210,7 @@ def get_coordinates(city, country):
         raise ValueError(f"Could not find coordinates for {city}, {country}")
 
 def create_poster(city, country, point, dist, output_file, orientation='portrait'):
-    print(f"
-Generating map for {city}, {country}...")
+    print(f"Generating map for {city}, {country}...")
     
     # Progress bar for data fetching
     with tqdm(total=3, desc="Fetching map data", unit="step", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
@@ -386,8 +385,7 @@ def list_themes():
         print("No themes found in 'themes/' directory.")
         return
         
-    print("
-Available Themes:")
+    print("Available Themes:")
     print("-" * 60)
     for theme_name in available_themes:
         theme_path = os.path.join(THEMES_DIR, f"{theme_name}.json")
@@ -444,8 +442,7 @@ Examples:
     # Check if either coordinates OR city/country are provided
     if not args.lat and not args.lng:
         if not args.city or not args.country:
-            print("Error: Either provide --lat and --lng, OR provide --city and --country
-")
+            print("Error: Either provide --lat and --lng, OR provide --city and --country")
             print_examples()
             sys.exit(1)
             
@@ -459,10 +456,9 @@ Examples:
     print("=" * 50)
     print("City Map Poster Generator")
     print("=" * 50)
-    
+
     try:
         # Load theme
-        global THEME
         THEME = load_theme(args.theme)
         
         # Get coordinates and generate poster
@@ -477,15 +473,13 @@ Examples:
         country_name = args.country if args.country else "custom"
         output_file = generate_output_filename(city_name, args.theme)
         
-        print("
-" + "=" * 50)
+        print("\n" + "=" * 50)
         create_poster(city_name, country_name, coords, args.distance, output_file, args.orientation)
         print("✓ Poster generation complete!")
         print("=" * 50)
         
     except Exception as e:
-        print(f"
-✗ Error: {e}")
+        print(f"\n✗ Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

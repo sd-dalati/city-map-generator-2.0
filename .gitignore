@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# additionally ignore generated poster images
+cache/
+posters/
+__pycache__/
+*.png
