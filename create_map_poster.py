@@ -8,6 +8,7 @@ from tqdm import tqdm
 import time
 import json
 import os
+import sys
 from datetime import datetime
 import argparse
 
@@ -31,7 +32,6 @@ def load_fonts():
         if not os.path.exists(path):
             print(f"⚠ Font not found: {path}")
             return None
-    
     return fonts
 
 FONTS = load_fonts()
@@ -42,7 +42,7 @@ def generate_output_filename(city, theme_name):
     """
     if not os.path.exists(POSTERS_DIR):
         os.makedirs(POSTERS_DIR)
-    
+        
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     city_slug = city.lower().replace(' ', '_')
     filename = f"{city_slug}_{theme_name}_{timestamp}.png"
@@ -55,7 +55,7 @@ def get_available_themes():
     if not os.path.exists(THEMES_DIR):
         os.makedirs(THEMES_DIR)
         return []
-    
+        
     themes = []
     for file in sorted(os.listdir(THEMES_DIR)):
         if file.endswith('.json'):
@@ -86,13 +86,14 @@ def load_theme(theme_name="feature_based"):
             "road_residential": "#4A4A4A",
             "road_default": "#3A3A3A"
         }
-    
+        
     with open(theme_file, 'r') as f:
         theme = json.load(f)
-        print(f"✓ Loaded theme: {theme.get('name', theme_name)}")
-        if 'description' in theme:
-            print(f"  {theme['description']}")
-        return theme
+        
+    print(f"✓ Loaded theme: {theme.get('name', theme_name)}")
+    if 'description' in theme:
+        print(f"  {theme['description']}")
+    return theme
 
 # Load theme (can be changed via command line or input)
 THEME = None  # Will be loaded later
@@ -118,13 +119,13 @@ def create_gradient_fade(ax, color, location='bottom', zorder=10):
         my_colors[:, 3] = np.linspace(0, 1, 256)
         extent_y_start = 0.75
         extent_y_end = 1.0
-
+        
     custom_cmap = mcolors.ListedColormap(my_colors)
     
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    y_range = ylim[1] - ylim[0]
     
+    y_range = ylim[1] - ylim[0]
     y_bottom = ylim[0] + y_range * extent_y_start
     y_top = ylim[0] + y_range * extent_y_end
     
@@ -137,7 +138,6 @@ def get_edge_colors_by_type(G):
     Returns a list of colors corresponding to each edge in the graph.
     """
     edge_colors = []
-    
     for u, v, data in G.edges(data=True):
         # Get the highway type (can be a list or string)
         highway = data.get('highway', 'unclassified')
@@ -145,7 +145,7 @@ def get_edge_colors_by_type(G):
         # Handle list of highway types (take the first one)
         if isinstance(highway, list):
             highway = highway[0] if highway else 'unclassified'
-        
+            
         # Assign color based on road type
         if highway in ['motorway', 'motorway_link']:
             color = THEME['road_motorway']
@@ -159,9 +159,8 @@ def get_edge_colors_by_type(G):
             color = THEME['road_residential']
         else:
             color = THEME['road_default']
-        
+            
         edge_colors.append(color)
-    
     return edge_colors
 
 def get_edge_widths_by_type(G):
@@ -170,13 +169,11 @@ def get_edge_widths_by_type(G):
     Major roads get thicker lines.
     """
     edge_widths = []
-    
     for u, v, data in G.edges(data=True):
         highway = data.get('highway', 'unclassified')
-        
         if isinstance(highway, list):
             highway = highway[0] if highway else 'unclassified'
-        
+            
         # Assign width based on road importance
         if highway in ['motorway', 'motorway_link']:
             width = 1.2
@@ -188,9 +185,8 @@ def get_edge_widths_by_type(G):
             width = 0.6
         else:
             width = 0.4
-        
+            
         edge_widths.append(width)
-    
     return edge_widths
 
 def get_coordinates(city, country):
@@ -214,7 +210,8 @@ def get_coordinates(city, country):
         raise ValueError(f"Could not find coordinates for {city}, {country}")
 
 def create_poster(city, country, point, dist, output_file, orientation='portrait'):
-    print(f"\nGenerating map for {city}, {country}...")
+    print(f"
+Generating map for {city}, {country}...")
     
     # Progress bar for data fetching
     with tqdm(total=3, desc="Fetching map data", unit="step", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
@@ -222,7 +219,7 @@ def create_poster(city, country, point, dist, output_file, orientation='portrait
         pbar.set_description("Downloading street network")
         G = ox.graph_from_point(point, dist=dist, dist_type='bbox', network_type='all')
         pbar.update(1)
-        time.sleep(0.5)  # Rate limit between requests
+        time.sleep(0.5) # Rate limit between requests
         
         # 2. Fetch Water Features
         pbar.set_description("Downloading water features")
@@ -240,43 +237,45 @@ def create_poster(city, country, point, dist, output_file, orientation='portrait
         except:
             parks = None
         pbar.update(1)
-    
+        
     print("✓ All data downloaded successfully!")
-    
+
     # 2. Setup Plot
     print("Rendering map...")
+    
     # Set figure size based on orientation
     if orientation == 'landscape':
-        fig, ax = plt.subplots(figsize=(20, 12), facecolor=THEME['bg'])  # Landscape: wider than tall
+        fig, ax = plt.subplots(figsize=(20, 12), facecolor=THEME['bg']) # Landscape: wider than tall
     else:
-        fig, ax = plt.subplots(figsize=(12, 16), facecolor=THEME['bg'])  # Portrait: taller than wide
+        fig, ax = plt.subplots(figsize=(12, 16), facecolor=THEME['bg']) # Portrait: taller than wide
+        
     ax.set_facecolor(THEME['bg'])
     ax.set_position([0, 0, 1, 1])
-    
+
     # 3. Plot Layers
+    
     # Layer 1: Polygons
     if water is not None and not water.empty:
         water.plot(ax=ax, facecolor=THEME['water'], edgecolor='none', zorder=1)
+        
     if parks is not None and not parks.empty:
         parks.plot(ax=ax, facecolor=THEME['parks'], edgecolor='none', zorder=2)
-    
+
     # Layer 2: Roads with hierarchy coloring
     print("Applying road hierarchy colors...")
     edge_colors = get_edge_colors_by_type(G)
     edge_widths = get_edge_widths_by_type(G)
     
     ox.plot_graph(
-        G, ax=ax, bgcolor=THEME['bg'],
-        node_size=0,
-        edge_color=edge_colors,
-        edge_linewidth=edge_widths,
+        G, ax=ax, bgcolor=THEME['bg'], node_size=0, 
+        edge_color=edge_colors, edge_linewidth=edge_widths, 
         show=False, close=False
     )
-    
+
     # Layer 3: Gradients (Top and Bottom)
     create_gradient_fade(ax, THEME['gradient_color'], location='bottom', zorder=10)
     create_gradient_fade(ax, THEME['gradient_color'], location='top', zorder=10)
-    
+
     # 4. Typography using Roboto font
     if FONTS:
         font_main = FontProperties(fname=FONTS['bold'], size=60)
@@ -289,24 +288,24 @@ def create_poster(city, country, point, dist, output_file, orientation='portrait
         font_top = FontProperties(family='monospace', weight='bold', size=40)
         font_sub = FontProperties(family='monospace', weight='normal', size=22)
         font_coords = FontProperties(family='monospace', size=14)
+        
+    spaced_city = " ".join(list(city.upper()))
     
-    spaced_city = "  ".join(list(city.upper()))
-
     # --- BOTTOM TEXT ---
-    ax.text(0.5, 0.14, spaced_city, transform=ax.transAxes,
-            color=THEME['text'], ha='center', fontproperties=font_main, zorder=11)
-    
-    ax.text(0.5, 0.10, country.upper(), transform=ax.transAxes,
-            color=THEME['text'], ha='center', fontproperties=font_sub, zorder=11)
-    
+    ax.text(0.5, 0.14, spaced_city, transform=ax.transAxes, color=THEME['text'], 
+            ha='center', fontproperties=font_main, zorder=11)
+            
+    ax.text(0.5, 0.10, country.upper(), transform=ax.transAxes, color=THEME['text'], 
+            ha='center', fontproperties=font_sub, zorder=11)
+            
     lat, lon = point
     coords = f"{lat:.4f}° N / {lon:.4f}° E" if lat >= 0 else f"{abs(lat):.4f}° S / {lon:.4f}° E"
     if lon < 0:
         coords = coords.replace("E", "W")
-    
-    ax.text(0.5, 0.07, coords, transform=ax.transAxes,
-            color=THEME['text'], alpha=0.7, ha='center', fontproperties=font_coords, zorder=11)
-    
+        
+    ax.text(0.5, 0.07, coords, transform=ax.transAxes, color=THEME['text'], 
+            alpha=0.7, ha='center', fontproperties=font_coords, zorder=11)
+            
     ax.plot([0.4, 0.6], [0.125, 0.125], transform=ax.transAxes, 
             color=THEME['text'], linewidth=1, zorder=11)
 
@@ -315,15 +314,15 @@ def create_poster(city, country, point, dist, output_file, orientation='portrait
         font_attr = FontProperties(fname=FONTS['light'], size=8)
     else:
         font_attr = FontProperties(family='monospace', size=8)
-    
-    ax.text(0.98, 0.02, "© OpenStreetMap contributors", transform=ax.transAxes,
-            color=THEME['text'], alpha=0.5, ha='right', va='bottom', 
-            fontproperties=font_attr, zorder=11)
+        
+    ax.text(0.98, 0.02, "© OpenStreetMap contributors", transform=ax.transAxes, 
+            color=THEME['text'], alpha=0.5, ha='right', va='bottom', fontproperties=font_attr, zorder=11)
 
     # 5. Save
     print(f"Saving to {output_file}...")
     plt.savefig(output_file, dpi=300, facecolor=THEME['bg'])
     plt.close()
+    
     print(f"✓ Done! Poster saved as {output_file}")
 
 def print_examples():
@@ -331,56 +330,54 @@ def print_examples():
     print("""
 City Map Poster Generator
 =========================
-
-Usage:
-  python create_map_poster.py --city <city> --country <country> [options]
+Usage: python create_map_poster.py --city <name> --country <name> [options]
 
 Examples:
-  # Iconic grid patterns
-  python create_map_poster.py -c "New York" -C "USA" -t noir -d 12000           # Manhattan grid
-  python create_map_poster.py -c "Barcelona" -C "Spain" -t warm_beige -d 8000   # Eixample district grid
-  
-  # Waterfront & canals
-  python create_map_poster.py -c "Venice" -C "Italy" -t blueprint -d 4000       # Canal network
-  python create_map_poster.py -c "Amsterdam" -C "Netherlands" -t ocean -d 6000  # Concentric canals
-  python create_map_poster.py -c "Dubai" -C "UAE" -t midnight_blue -d 15000     # Palm & coastline
-  
-  # Radial patterns
-  python create_map_poster.py -c "Paris" -C "France" -t pastel_dream -d 10000   # Haussmann boulevards
-  python create_map_poster.py -c "Moscow" -C "Russia" -t noir -d 12000          # Ring roads
-  
-  # Organic old cities
-  python create_map_poster.py -c "Tokyo" -C "Japan" -t japanese_ink -d 15000    # Dense organic streets
-  python create_map_poster.py -c "Marrakech" -C "Morocco" -t terracotta -d 5000 # Medina maze
-  python create_map_poster.py -c "Rome" -C "Italy" -t warm_beige -d 8000        # Ancient street layout
-  
-  # Coastal cities
-  python create_map_poster.py -c "San Francisco" -C "USA" -t sunset -d 10000    # Peninsula grid
-  python create_map_poster.py -c "Sydney" -C "Australia" -t ocean -d 12000      # Harbor city
-  python create_map_poster.py -c "Mumbai" -C "India" -t contrast_zones -d 18000 # Coastal peninsula
-  
-  # River cities
-  python create_map_poster.py -c "London" -C "UK" -t noir -d 15000              # Thames curves
-  python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000  # Danube split
-  
-  # List themes
-  python create_map_poster.py --list-themes
+# Iconic grid patterns
+python create_map_poster.py -c "New York" -C "USA" -t noir -d 12000          # Manhattan grid
+python create_map_poster.py -c "Barcelona" -C "Spain" -t warm_beige -d 8000   # Eixample district grid
+
+# Waterfront & canals
+python create_map_poster.py -c "Venice" -C "Italy" -t blueprint -d 4000      # Canal network
+python create_map_poster.py -c "Amsterdam" -C "Netherlands" -t ocean -d 6000 # Concentric canals
+python create_map_poster.py -c "Dubai" -C "UAE" -t midnight_blue -d 15000     # Palm & coastline
+
+# Radial patterns
+python create_map_poster.py -c "Paris" -C "France" -t pastel_dream -d 10000   # Haussmann boulevards
+python create_map_poster.py -c "Moscow" -C "Russia" -t noir -d 12000         # Ring roads
+
+# Organic old cities
+python create_map_poster.py -c "Tokyo" -C "Japan" -t japanese_ink -d 15000   # Dense organic streets
+python create_map_poster.py -c "Marrakech" -C "Morocco" -t terracotta -d 5000 # Medina maze
+python create_map_poster.py -c "Rome" -C "Italy" -t warm_beige -d 8000       # Ancient street layout
+
+# Coastal cities
+python create_map_poster.py -c "San Francisco" -C "USA" -t sunset -d 10000    # Peninsula grid
+python create_map_poster.py -c "Sydney" -C "Australia" -t ocean -d 12000      # Harbor city
+python create_map_poster.py -c "Mumbai" -C "India" -t contrast_zones -d 18000 # Coastal peninsula
+
+# River cities
+python create_map_poster.py -c "London" -C "UK" -t noir -d 15000             # Thames curves
+python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000 # Danube split
+
+# List themes
+python create_map_poster.py --list-themes
 
 Options:
-  --city, -c        City name (required)
-  --country, -C     Country name (required)
-  --theme, -t       Theme name (default: feature_based)
-  --distance, -d    Map radius in meters (default: 29000)
-  --list-themes     List all available themes
+  --city, -c         City name (required)
+  --country, -C      Country name (required)
+  --theme, -t        Theme name (default: feature_based)
+  --distance, -d     Map radius in meters (default: 29000)
+  --list-themes      List all available themes
 
 Distance guide:
-  4000-6000m   Small/dense cities (Venice, Amsterdam old center)
-  8000-12000m  Medium cities, focused downtown (Paris, Barcelona)
-  15000-20000m Large metros, full city view (Tokyo, Mumbai)
+  4000-6000m      Small/dense cities (Venice, Amsterdam old center)
+  8000-12000m     Medium cities, focused downtown (Paris, Barcelona)
+  15000-20000m    Large metros, full city view (Tokyo, Mumbai)
 
 Available themes can be found in the 'themes/' directory.
 Generated posters are saved to 'posters/' directory.
-""")
+    """)
 
 def list_themes():
     """List all available themes with descriptions."""
@@ -388,8 +385,9 @@ def list_themes():
     if not available_themes:
         print("No themes found in 'themes/' directory.")
         return
-    
-    print("\nAvailable Themes:")
+        
+    print("
+Available Themes:")
     print("-" * 60)
     for theme_name in available_themes:
         theme_path = os.path.join(THEMES_DIR, f"{theme_name}.json")
@@ -401,6 +399,7 @@ def list_themes():
         except:
             display_name = theme_name
             description = ''
+            
         print(f"  {theme_name}")
         print(f"    {display_name}")
         if description:
@@ -432,34 +431,38 @@ Examples:
     args = parser.parse_args()
     
     # If no arguments provided, show examples
-    if len(os.sys.argv) == 1:
+    if len(sys.argv) == 1:
         print_examples()
-        os.sys.exit(0)
-    
+        sys.exit(0)
+        
     # List themes if requested
     if args.list_themes:
         list_themes()
-        os.sys.exit(0)
-    
+        sys.exit(0)
+        
     # Validate required arguments
-        # Check if either coordinates OR city/country are provided
-        print("Error: --city and --country are required.\n")
-        print_examples()
-        os.sys.exit(1)
-    
+    # Check if either coordinates OR city/country are provided
+    if not args.lat and not args.lng:
+        if not args.city or not args.country:
+            print("Error: Either provide --lat and --lng, OR provide --city and --country
+")
+            print_examples()
+            sys.exit(1)
+            
     # Validate theme exists
     available_themes = get_available_themes()
     if args.theme not in available_themes:
         print(f"Error: Theme '{args.theme}' not found.")
         print(f"Available themes: {', '.join(available_themes)}")
-        os.sys.exit(1)
-    
+        sys.exit(1)
+        
     print("=" * 50)
     print("City Map Poster Generator")
     print("=" * 50)
     
     try:
         # Load theme
+        global THEME
         THEME = load_theme(args.theme)
         
         # Get coordinates and generate poster
@@ -467,25 +470,22 @@ Examples:
             coords = (args.lat, args.lng)
             print(f"✓ Using custom coordinates: {args.lat}, {args.lng}")
         else:
-            if not args.city or not args.country:
-                print("Error: Either provide --lat and --lng, OR provide --city and --country")
-                os.sys.exit(1)
             coords = get_coordinates(args.city, args.country)
-        
-                # Use city name if available, otherwise use coordinates for filename
+            
+        # Use city name if available, otherwise use coordinates for filename
         city_name = args.city if args.city else f"{args.lat}_{args.lng}"
         country_name = args.country if args.country else "custom"
-        
         output_file = generate_output_filename(city_name, args.theme)
         
-        
-        print("\n" + "=" * 50)
-                te_poster(city_name, country_name, coords, args.distance, output_file, args.orientation)
+        print("
+" + "=" * 50)
+        create_poster(city_name, country_name, coords, args.distance, output_file, args.orientation)
         print("✓ Poster generation complete!")
         print("=" * 50)
         
     except Exception as e:
-        print(f"\n✗ Error: {e}")
+        print(f"
+✗ Error: {e}")
         import traceback
         traceback.print_exc()
-        os.sys.exit(1)
+        sys.exit(1)
